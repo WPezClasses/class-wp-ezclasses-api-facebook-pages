@@ -16,7 +16,10 @@
  */
  
 /**
- * == Change Log == 
+ * == Change Log ==
+ *
+ * -- 0.5.1 - Thur 2 April 2015
+ * --- FIXED: Had some properties as private that should have been less so (i.e., protected)
  *
  * -- 0.5.0 - Mon 16 March 2015
  * --- Pop the champagne!
@@ -44,9 +47,9 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 	private $_basename;
 	private $_file;
 	
-	private $_page_name;
-	private $_retries;
-	private $_pause;
+	protected $_page_name;
+	protected $_retries;
+	protected $_pause;
   
     protected $_arr_init;
 	  
@@ -62,7 +65,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 	  $this->setup();
 	  
 	  $this->fb_pages_todo();
-	
+
 	  $arr_init_defaults = $this->init_defaults();
 	  
 	  $this->_arr_init = WPezHelpers::ez_array_merge(array($arr_init_defaults, $arr_args));
@@ -127,7 +130,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 		
 		if ( empty($arr_page_data['id']) ){
 		  // invalid fanpage name
-          return array('error' => 'The FB Page name specified is not valid.');
+          return array('error' => 'The FB Page name ' . $str_get_by . ' is not valid.');
 		}
 		// we're good! stash the page's properties
 		$arr_return['page']['profile'] = $arr_page_data;
