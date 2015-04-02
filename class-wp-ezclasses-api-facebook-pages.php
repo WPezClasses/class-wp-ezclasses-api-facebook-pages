@@ -185,7 +185,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 				$str_img = $arr_the_img[0][0];
 				
 				// store the whole image tag
-			   	$arr_imgs[$key] = $str_img;
+			   	$arr_imgs[$key] = trim($str_img);
 				
 				// back out to the wrapping li to get the followers' link to profile a href
 				// Note: not all followers have link tos
@@ -196,7 +196,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 					$str_href = str_replace('href="', '', $str_href  );
 					$str_href = str_replace('"', '', $str_href  );
 				}
-				$arr_hrefs[$key] = $str_href;
+				$arr_hrefs[$key] = trim($str_href);
 			
 				// alt= aka followers' name
 				preg_match_all($regex_alt, $str_img, $arr_alt);
@@ -206,7 +206,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 					$str_alt = str_replace('alt="', '', $str_alt  );
 					$str_alt = str_replace('"', '', $str_alt  );
 				}
-				$arr_followers[$key] = $str_alt;
+				$arr_followers[$key] = trim($str_alt);
 				
 				// the img src
 				preg_match_all($regex_src, $str_img, $arr_src);
@@ -216,7 +216,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 					$str_src = str_replace('src="', '', $str_src );
 					$str_src = str_replace('"', '', $str_src  );
 				}
-				$arr_srcs[$key] = $str_src;   
+				$arr_srcs[$key] = trim($str_src);   
 			}   
 		}
 
