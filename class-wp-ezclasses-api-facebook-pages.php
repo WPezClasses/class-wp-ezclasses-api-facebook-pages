@@ -18,6 +18,10 @@
 /**
  * == Change Log ==
  *
+ * -- 0.5.2 - Thur 25 June 2015
+ * --- FIXED: Refactored (a bit) due to changes on FB API (deprecation of http://graph.facebook.com with no auth)
+ * --- ADDED: people_like property for parsing out the people like count based on local language
+ *
  * -- 0.5.1 - Thur 2 April 2015
  * --- FIXED: Had some properties as private that should have been less so (i.e., protected)
  *
@@ -50,6 +54,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 	protected $_page_name;
 	protected $_retries;
 	protected $_pause;
+    protected $_people_like;
   
     protected $_arr_init;
 	  
@@ -106,60 +111,107 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 	 */
 	protected function fb_pages_todo(){
 	
-		$this->_page_name = 'facebook';  // TODO
-		$this->_page_id = false;  		// if this is not false, we'll cut to the chase and use it instead of the name. the page_id can be found under the about \ page info
+		$this->_page_name = 'facebook';         // TODO
+		$this->_page_id = false;  		        // if this is not false, we'll cut to the chase and use it instead of the name. the page_id can be found under the about \ page info
 		$this->_retries = 3;
-		$this->_pause = 500000; 		// 500ms - currently not in use
+		$this->_pause = 500000; 		        // 500ms - currently not in use
 
+        $this->_people_like = 'people like';    // in the event your language isn't english
 	}
 	
 	/**
 	 * gets the page's widget and parses it
 	 */
-	public function page_widget(){
-	
-		$arr_return = array();
-		
-		$str_get_by = $this->_page_name;
-		if ( $this->_page_id !== false ){
-			$str_get_by = $this->_page_id;
-		}
-		
-		// get page info from graph
-		$arr_page_data = json_decode(file_get_contents('http://graph.facebook.com/' . $str_get_by), true);
-		
-		if ( empty($arr_page_data['id']) ){
-		  // invalid fanpage name
-          return array('error' => 'The FB Page name ' . $str_get_by . ' is not valid.');
-		}
-		// we're good! stash the page's properties
-		$arr_return['page']['profile'] = $arr_page_data;
-		
-		$arr_page_img = json_decode(file_get_contents('http://graph.facebook.com/' . $arr_page_data['id'] . '/picture?redirect=false'), true);
-		$page_img = '';
-		if ( isset($arr_page_img['data']['url']) ){
-			$str_page_img = $arr_page_img['data']['url'];
-		}
-		// stash the page's sqr image
-		$arr_return['page']['src_sqr'] = $str_page_img;
-		
-		$url = 'http://www.facebook.com/plugins/fan.php?connections=100&id=' . $arr_page_data['id'];
+	public function page_widget()
+    {
+
+        if ( ! isset($this->_people_like) || empty($this->_people_like) ){
+            $this->_people_like = 'people like';
+        }
+
+        $arr_return = array();
+
+        $str_get_by_qv = 'name';
+        $str_get_by = trim($this->_page_name);
+        if ( isset($this->_page_id) && $this->_page_id !== false) {
+            $str_get_by_qv = 'id';
+            $str_get_by = trim($this->_page_id);
+        }
+
+        // deprecated by fb, evidently. let's just leave it here for the moment.
+        if (false) {
+            // get page info from graph
+            $arr_page_data = json_decode(file_get_contents('http://graph.facebook.com/' . $str_get_by), true);
+
+            if (empty($arr_page_data['id'])) {
+                // invalid fanpage name
+                return array('error' => 'The FB Page name ' . $str_get_by . ' is not valid.');
+            }
+            // we're good! stash the page's properties
+            $arr_return['page']['profile'] = $arr_page_data;
+        }
+
+
+        // get the page thumbnail
+        $arr_page_img = json_decode(file_get_contents('http://graph.facebook.com/' . $str_get_by . '/picture?redirect=false'), true);
+        $str_page_img = '';
+        if ( isset($arr_page_img['data']['url']) &&  isset($arr_page_img['data']['is_silhouette']) && $arr_page_img['data']['is_silhouette'] == false ) {
+            $str_page_img = $arr_page_img['data']['url'];
+        }
+        // stash the page's sqr image
+        $arr_return['page']['src_sqr'] = $str_page_img;
+
+        // get a page "widget" and then let's parse the shxt out of it :)
+        $url = 'http://www.facebook.com/plugins/fan.php?connections=100&' . $str_get_by_qv . '=' . $str_get_by;
 		$context = stream_context_create(array('http' => array('header' => 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:22.0) Gecko/20100101 Firefox/22.0')));
-		
+
 		$str_widget_html = false;
 		for($try = 0; $try < $this->_retries; $try++){
 		
 			$str_widget_html = file_get_contents($url, false, $context);
-			
 			if ( $str_widget_html !== false ){
 				break;
 			}
 		}
+
 		if ( $str_widget_html === false ){
 			return array('error' => 'Unable to retrieve data from Facebook.');
 		}
-				
-		
+
+        // the page likes
+        $regex_people_like = '/[0-9]+,[0-9]+ ' . $this->_people_like . '/';
+        preg_match($regex_people_like, $str_widget_html, $arr_people_like);
+
+        $arr_return['page']['likes'] = '';
+        if ( isset($arr_people_like[0]) && ! empty($arr_people_like[0]) ){
+            $arr_people_like_parse = explode(' ', $arr_people_like[0]);
+            // 0 - # of likes
+            // 1 - 'people'
+            // 2 - 'like'
+            // 2 - 'like'
+            // IMPORTANT - this is a string NOT an int
+            $arr_return['page']['likes'] = trim($arr_people_like_parse[0]);
+        }
+
+        // page name and page url
+
+        $arr_return['page']['name'] = '';
+        $arr_return['page']['url'] = '';
+
+        $regex_page_name = '/(?<=' . $this->_people_like . ').*?<\/a>/';
+        preg_match($regex_page_name, $str_widget_html, $arr_page_name);
+
+        if ( isset($arr_page_name[0]) && ! empty($arr_page_name[0]) ){
+            $arr_return['page']['name'] = trim(strip_tags($arr_page_name[0]));
+
+            $regex_page_url = '/(?<=href=").*?(?=")/';
+            preg_match($regex_page_url, $arr_page_name[0], $arr_page_url);
+            if ( isset($arr_page_url[0]) && ! empty($arr_page_url[0]) ){
+                $arr_return['page']['url'] = trim($arr_page_url[0]);
+
+            }
+        }
+
 		// the followers list is a <li> list
 		$regex_imgs =  '(<li([^>]+)>(.+?)</li>)';
 		preg_match_all($regex_imgs, $str_widget_html, $arr_followers_lis);
@@ -198,7 +250,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 				}
 				$arr_hrefs[$key] = trim($str_href);
 			
-				// alt= aka followers' name
+				// alt= ka followers' name
 				preg_match_all($regex_alt, $str_img, $arr_alt);
 				$str_alt = '';
 				if ( isset($arr_alt[0][0]) ){

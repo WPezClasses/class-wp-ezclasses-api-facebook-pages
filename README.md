@@ -19,10 +19,18 @@ in order to gain greater control over display / layout, as well as use a WP tran
 Note: This is part API (for the basic page info) and part parsing an iframe widget returned by graph.facebook.com. In either case,
 the result is data (read: an array) you can stash in a transient, and use in your own view / layout.
 
+To get a feel for what data you'll have available to you:
+
+http://graph.facebook.com/your-text-page-name-here
+
+Also keep in mind, this class will parse the image tags so you'll also have the img src, the follower's name, as well as
+the follower's URL when it's available. Each of these is stored in an array and the key(s) keeps them tied together (so 
+to speak).
+
 
 ####Basic markup for a FB Pages' plugin widget
 
-https://github.com/ezWebDevTools/ezFacebookPagePlugin 
+https://github.com/ezWebDevTools/ezFacebookPagePlugin
 
 
 #### Credit / Inspiration
