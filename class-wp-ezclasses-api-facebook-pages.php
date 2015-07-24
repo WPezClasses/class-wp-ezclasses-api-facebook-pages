@@ -18,6 +18,9 @@
 /**
  * == Change Log ==
  *
+ * -- 0.5.3 - Fri 24 July 2015
+ * ---- FIXED: Refactored (a bit) due to changes to the FP Pages plugin (https://developers.facebook.com/docs/plugins/page-plugin)
+ *
  * -- 0.5.2 - Thur 25 June 2015
  * --- FIXED: Refactored (a bit) due to changes on FB API (deprecation of http://graph.facebook.com with no auth)
  * --- ADDED: people_like property for parsing out the people like count based on local language
@@ -116,7 +119,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 		$this->_retries = 3;
 		$this->_pause = 500000; 		        // 500ms - currently not in use
 
-        $this->_people_like = 'people like';    // in the event your language isn't english
+        $this->_people_like = 'likes';    // in the event your language isn't english
 	}
 	
 	/**
@@ -126,7 +129,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
     {
 
         if ( ! isset($this->_people_like) || empty($this->_people_like) ){
-            $this->_people_like = 'people like';
+            $this->_people_like = 'likes';
         }
 
         $arr_return = array();
@@ -151,7 +154,6 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
             $arr_return['page']['profile'] = $arr_page_data;
         }
 
-
         // get the page thumbnail
         $arr_page_img = json_decode(file_get_contents('http://graph.facebook.com/' . $str_get_by . '/picture?redirect=false'), true);
         $str_page_img = '';
@@ -162,7 +164,7 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
         $arr_return['page']['src_sqr'] = $str_page_img;
 
         // get a page "widget" and then let's parse the shxt out of it :)
-        $url = 'http://www.facebook.com/plugins/fan.php?connections=100&' . $str_get_by_qv . '=' . $str_get_by;
+        $url = 'http://www.facebook.com/plugins/fan.php?connections=100&' . $str_get_by_qv . '=' . $str_get_by.'&width=500';
 		$context = stream_context_create(array('http' => array('header' => 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:22.0) Gecko/20100101 Firefox/22.0')));
 
 		$str_widget_html = false;
@@ -198,17 +200,18 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
         $arr_return['page']['name'] = '';
         $arr_return['page']['url'] = '';
 
-        $regex_page_name = '/(?<=' . $this->_people_like . ').*?<\/a>/';
-        preg_match($regex_page_name, $str_widget_html, $arr_page_name);
+       //  $regex_page_name = '/(?<=' . $this->_people_like . ').*?<\/a>/';
+        $regex_page_name = '/(?<='  . ').*?<\/a>/';
+        preg_match_all($regex_page_name, $str_widget_html, $arr_page_name);
 
-        if ( isset($arr_page_name[0]) && ! empty($arr_page_name[0]) ){
-            $arr_return['page']['name'] = trim(strip_tags($arr_page_name[0]));
-
+        // we want to skip the first links the preg_match_all snags
+        if ( isset($arr_page_name[0]) && ! empty($arr_page_name[0]) && isset($arr_page_name[0][1]) && ! empty($arr_page_name[0][1]) ){
+            $arr_page_name = $arr_page_name[0];
+            $arr_return['page']['name'] = trim(strip_tags($arr_page_name[1]));
             $regex_page_url = '/(?<=href=").*?(?=")/';
-            preg_match($regex_page_url, $arr_page_name[0], $arr_page_url);
+            preg_match($regex_page_url, $arr_page_name[1], $arr_page_url);
             if ( isset($arr_page_url[0]) && ! empty($arr_page_url[0]) ){
                 $arr_return['page']['url'] = trim($arr_page_url[0]);
-
             }
         }
 
@@ -277,7 +280,8 @@ if ( ! class_exists('Class_WP_ezClasses_API_Facebook_Pages') ) {
 		$arr_return['followers']['names'] = $arr_followers;
 		$arr_return['followers']['a_hrefs'] = $arr_hrefs;
 		
-		// usleep($this->_pause);	
+		// usleep($this->_pause);
+
 		return $arr_return;
 	 }
 	}
